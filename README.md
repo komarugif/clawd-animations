@@ -34,6 +34,8 @@ A scene file holds:
 
 - `viewBox`, the picture's box, and `stage`, how many times as wide as it
   the space it moves in is;
+- `rest`: the moment, in seconds, whose frame stands for the scene where
+  it does not move (KomaruGram's animations turned off);
 - `version`: 2, the format's;
 - `nodes`: groups and filled rectangles, each with its `parent` (`-1` for
   the root), its `matrix`, the SVG transform `[a, b, c, d, e, f]`

@@ -20,12 +20,15 @@ if (!source || !outDir) {
   console.error("usage: node extract/extract.mjs <page URL | chunk.js> <out-dir>");
   process.exit(2);
 }
-// The modules, by their numbers, in the order the scenes are listed.
+// The modules, by their numbers, in the order the scenes are listed, with
+// the moment that stands for the scene when it does not move (rest, in
+// seconds): the walk's and the flag's first frames, the workout with a
+// dumbbell up, the hop with the confetti in the air.
 const MODULES = [
-  ["630665", { name: "walk", stage: 4 }],
-  ["282808", { name: "gym" }],
-  ["4030", { name: "flag" }],
-  ["926067", { name: "juggle" }],
+  ["630665", { name: "walk", stage: 4, rest: 0 }],
+  ["282808", { name: "gym", rest: 1.6 }],
+  ["4030", { name: "flag", rest: 0 }],
+  ["926067", { name: "juggle", rest: 0.3 }],
 ];
 const chunkPath = /^https?:/.test(source) ? await download(source) : source;
 
@@ -276,6 +279,7 @@ function flatten(info, svgNode) {
     name: info.name,
     viewBox: svgNode.viewBox,
     stage: info.stage || 1,
+    rest: info.rest || 0,
     nodes: nodes.filter((n) => n.kind !== "svg").map((n) => ({ ...n, id: shift(n.id), parent: n.parent === svgNode.id ? -1 : shift(n.parent) })),
     tracks,
   };

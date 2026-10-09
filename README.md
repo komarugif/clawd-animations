@@ -34,16 +34,19 @@ A scene file holds:
 
 - `viewBox`, the picture's box, and `stage`, how many times as wide as it
   the space it moves in is;
+- `version`: 2, the format's;
 - `nodes`: groups and filled rectangles, each with its `parent` (`-1` for
-  the root), a group's `transform` (translate and scale) and `clip`;
+  the root), its `matrix`, the SVG transform `[a, b, c, d, e, f]`
+  (x' = a x + c y + e, y' = b x + d y + f: the frames mirror and turn
+  rectangles so), and a group's `clip`;
 - `tracks`: timelines that run side by side, each with its `delay`,
   `duration`, whether it `repeat`s and from where (`loopFrom`), and its
   `events`. An event sets a node's property at `start`, or tweens it over
   `duration` with an `ease` (GSAP's names) from `from` to `to`. The
   properties are GSAP's `x`, `y`, `rotation`, `scaleX`, `scaleY`,
-  `origin` (svgOrigin, in the node's coordinates), `display`, a group's
-  `transform` attribute and a rectangle's `attr.x`, `attr.y`,
-  `attr.width`, `attr.height`.
+  `origin` (svgOrigin, in the node's coordinates), `display`, the
+  `transform` attribute (as a matrix) and a rectangle's `attr.x`,
+  `attr.y`, `attr.width`, `attr.height`.
 
 Every tween's start value is resolved, so a player only interpolates: the
 picture at any time is a function of that time. KomaruGram's player is

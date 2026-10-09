@@ -69,15 +69,35 @@ const jsxRuntime = { jsx: el, jsxs: el, Fragment };
 
 // --- the tree of nodes ------------------------------------------------------
 let nodes = [];
+// parseTransform reads an SVG transform list into its matrix
+// [a, b, c, d, e, f]: x' = a x + c y + e, y' = b x + d y + f.
 function parseTransform(s) {
-  const t = { tx: 0, ty: 0, sx: 1, sy: 1 };
-  if (!s) return t;
-  const tr = /translate\(\s*([-\d.]+)[\s,]+([-\d.]+)\s*\)/.exec(s);
-  if (tr) { t.tx = +tr[1]; t.ty = +tr[2]; }
-  const sc = /scale\(\s*([-\d.]+)(?:[\s,]+([-\d.]+))?\s*\)/.exec(s);
-  if (sc) { t.sx = +sc[1]; t.sy = sc[2] === undefined ? +sc[1] : +sc[2]; }
-  return t;
+  let m = [1, 0, 0, 1, 0, 0];
+  const mul = (p, q) => [
+    p[0] * q[0] + p[2] * q[1], p[1] * q[0] + p[3] * q[1],
+    p[0] * q[2] + p[2] * q[3], p[1] * q[2] + p[3] * q[3],
+    p[0] * q[4] + p[2] * q[5] + p[4], p[1] * q[4] + p[3] * q[5] + p[5],
+  ];
+  for (const [, op, args] of (s || "").matchAll(/(\w+)\s*\(([^)]*)\)/g)) {
+    const v = args.trim().split(/[\s,]+/).map(Number);
+    let t;
+    switch (op) {
+      case "matrix": t = v; break;
+      case "translate": t = [1, 0, 0, 1, v[0], v[1] || 0]; break;
+      case "scale": t = [v[0], 0, 0, v[1] ?? v[0], 0, 0]; break;
+      case "rotate": {
+        const a = (v[0] * Math.PI) / 180, cos = Math.cos(a), sin = Math.sin(a);
+        const [cx, cy] = [v[1] || 0, v[2] || 0];
+        t = mul(mul([1, 0, 0, 1, cx, cy], [cos, sin, -sin, cos, 0, 0]), [1, 0, 0, 1, -cx, -cy]);
+        break;
+      }
+      default: throw new Error("unknown transform " + op);
+    }
+    m = mul(m, t);
+  }
+  return m.map((x) => Math.round(x * 1e6) / 1e6 + 0);
 }
+const identity = (m) => m.every((x, i) => x === [1, 0, 0, 1, 0, 0][i]);
 const clipPaths = {};
 // mount turns an element into nodes and gives refs their node.
 function mount(e, parent, out) {
@@ -96,6 +116,8 @@ function mount(e, parent, out) {
   if (p.id) node.name = p.id;
   const hidden = p.display === "none" || (p.style && p.style.display === "none");
   if (hidden) node.hidden = true;
+  const matrix = parseTransform(p.transform);
+  if (!identity(matrix)) node.matrix = matrix;
   if (e.type === "rect") {
     Object.assign(node, { x: +(p.x || 0), y: +(p.y || 0), w: +p.width, h: +p.height, fill: p.fill });
     if (p.opacity !== undefined) node.opacity = +p.opacity;
@@ -103,8 +125,6 @@ function mount(e, parent, out) {
     node.kind = "svg";
     node.viewBox = p.viewBox.split(/\s+/).map(Number);
   } else {
-    const t = parseTransform(p.transform);
-    if (t.tx || t.ty || t.sx !== 1 || t.sy !== 1) node.transform = t;
     const clip = /url\(#(.+)\)/.exec(p.clipPath || "");
     if (clip && clipPaths[clip[1]]) node.clip = clipPaths[clip[1]];
   }
@@ -222,7 +242,7 @@ for (const [id, info] of MODULES) {
   index.push({ name: info.name, file: info.name + ".json" });
   console.log(info.name, scene.nodes.length, "nodes;", scene.tracks.map((t) => `${t.events.length} events over ${t.duration}s` + (t.delay ? ` after ${t.delay}s` : "") + (t.loopFrom !== undefined ? `, looping from ${t.loopFrom}s` : "")).join("; "));
 }
-fs.writeFileSync(path.join(outDir, "index.json"), JSON.stringify({ version: 1, animations: index }, null, 1) + "\n");
+fs.writeFileSync(path.join(outDir, "index.json"), JSON.stringify({ version: 2, animations: index }, null, 1) + "\n");
 
 // flatten makes the scene: the nodes, then a track for each timeline that
 // runs on its own (the juggle runs three side by side), its events with
@@ -252,6 +272,7 @@ function flatten(info, svgNode) {
     return track;
   });
   const scene = {
+    version: 2,
     name: info.name,
     viewBox: svgNode.viewBox,
     stage: info.stage || 1,

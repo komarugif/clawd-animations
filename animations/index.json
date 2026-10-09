@@ -1,0 +1,21 @@
+{
+ "version": 1,
+ "animations": [
+  {
+   "name": "walk",
+   "file": "walk.json"
+  },
+  {
+   "name": "gym",
+   "file": "gym.json"
+  },
+  {
+   "name": "flag",
+   "file": "flag.json"
+  },
+  {
+   "name": "juggle",
+   "file": "juggle.json"
+  }
+ ]
+}
